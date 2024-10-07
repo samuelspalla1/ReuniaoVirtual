@@ -5,6 +5,8 @@ const http = require('http')
 const socketIo = require('socket.io')
 const jwt = require('jsonwebtoken')
 const Room = require('./models/roomModel')
+const swaggerUi = require('swagger-ui-express')
+const swaggerJsDoc = require('swagger-jsdoc')
 
 dotenv.config()
 connectDB()
@@ -16,6 +18,26 @@ const io = socketIo(server)
 
 app.use(express.json())
 app.use(express.static('public'))
+
+const swaggerOptions = {
+    swaggerDefinition: {
+        openapi: '3.0.0',
+        info: {
+            title: 'API de Reunião Virtual',
+            version: '1.0.0',
+            description: 'Documentação da API para gerenciamento de reuniões virtuais',
+        },
+        servers: [
+            {
+                url: `http://localhost:${process.env.PORT || 5000}`,
+            },
+        ],
+    },
+    apis: ['./routes/*.js']
+};
+
+const swaggerDocs = swaggerJsDoc(swaggerOptions);
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 
 app.use('/api/auth', require('./routes/userRoutes'))
 app.use('/api/rooms', require('./routes/roomsRoutes'))
