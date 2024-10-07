@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Reunião Virtual</title>
+    <script src="https://cdn.socket.io/4.3.2/socket.io.min.js"></script>
+</head>
+<body>
+    <h1>Reunião Virtual</h1>
+    <input type="email" id="email" placeholder="Email" />
+    <input type="password" id="password" placeholder="Senha" />
+    <button id="loginButton">Login</button>
+    <button id="joinButton" style="display:none;">Entrar na sala</button>
+
+    <div id="roomInfo" style="display:none;">
+        <h2>Você entrou na sala: <span id="roomName"></span></h2>
+        <p>Usuário: <span id="userName"></span></p>
+        <h3>Usuários na sala:</h3>
+        <ul id="userList"></ul> 
+    </div>
+
+    <script>
+        let socket
+
+        async function login(email, password) {
+            const response = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ email, password })
+            })
+
+            const data = await response.json()
+
+            if (response.ok) {
+                localStorage.setItem('token', data.token)
+                console.log('Usuário logado com sucesso, token armazenado:', data.token)
+                document.getElementById('joinButton').style.display = 'block'
+                connectSocket(data.token, email)
+            } else {
+                console.error('Erro ao logar:', data.msg)
+            }
+        }
+
+        function connectSocket(token, email) {
+            socket = io('http://localhost:5000', {
+                query: { token }
+            })
+
+            socket.on('connect', () => {
+                console.log('Conectado ao servidor Socket.IO')
+            })
+
+            socket.on('connect_error', (err) => {
+                console.error('Erro de conexão:', err)
+            })
+
+            socket.on('error', (err) => {
+                alert(err.message)
+            })
+
+            socket.on('joined-room', ({ roomName, userId }) => {
+                document.getElementById('roomName').textContent = roomName
+                document.getElementById('userName').textContent = email
+                document.getElementById('roomInfo').style.display = 'block'
+            });
+
+            socket.on('user-list-update', (userList) => {
+                const userListElement = document.getElementById('userList')
+                userListElement.innerHTML = ''
+
+                userList.forEach(name => {
+                    const li = document.createElement('li')
+                    li.textContent = name
+                    userListElement.appendChild(li)
+                });
+            });
+
+            document.getElementById('joinButton').onclick = function() {
+                const roomId = prompt('Insira o ID da sala:')
+                socket.emit('join-room', roomId)
+            };
+        }
+
+        document.getElementById('loginButton').onclick = function() {
+            const email = document.getElementById('email').value
+            const password = document.getElementById('password').value
+            login(email, password)
+        };
+    </script>
+</body>
+</html>
